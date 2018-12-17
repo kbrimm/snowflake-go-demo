@@ -21,8 +21,8 @@ type Parameters struct {
 	Schema    string `json:"schema"`
 }
 
-// getDSN constructs a DSN based on the test connection parameters
-func getDSN() (string, *sf.Config, error) {
+// readParams reads in connection credentials from parameters.json
+func readParams() Parameters {
 	paramConfig, err := os.Open("parameters.json")
 	byteStream, _ := ioutil.ReadAll(paramConfig)
 	var params Parameters
@@ -31,7 +31,12 @@ func getDSN() (string, *sf.Config, error) {
 	if err != nil {
 		panic("unable to read parameters.json")
 	}
+	return params
+}
 
+// getDSN constructs a DSN based on the test connection parameters
+func getDSN() (string, *sf.Config, error) {
+	params := readParams()
 	cfg := &sf.Config{
 		Account:   params.Account,
 		User:      params.User,
@@ -56,21 +61,21 @@ func selectOne() {
 		log.Fatalf("failed to connect. %v, err: %v", dsn, err)
 	}
 	defer db.Close()
-	query := "SELECT 1 FROM TEST"
+	query := "SELECT * FROM TEST LIMIT 5"
 	rows, err := db.Query(query) // no cancel is allowed
 	if err != nil {
 		log.Fatalf("failed to run a query. %v, err: %v", query, err)
 	}
 	defer rows.Close()
-	var v int
+
+	var columnOne string
+	var columnTwo string
 	for rows.Next() {
-		err := rows.Scan(&v)
+		err := rows.Scan(&columnOne, &columnTwo)
 		if err != nil {
 			log.Fatalf("failed to get result. err: %v", err)
 		}
-		if v != 1 {
-			log.Fatalf("failed to get 1. got: %v", v)
-		}
+		fmt.Printf("Test data row: [ %v ][ %v ]\n", columnOne, columnTwo)
 	}
 	if rows.Err() != nil {
 		fmt.Printf("ERROR: %v\n", rows.Err())
